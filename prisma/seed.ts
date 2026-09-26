@@ -16,11 +16,11 @@ async function main() {
 
   const playerA = await prisma.user.upsert({
     where: { email: 'player-a@demo.local' },
-    update: {},
+    update: { role: 'CREATOR' },
     create: {
       email: 'player-a@demo.local',
       displayName: 'Player Demo User A',
-      role: 'PLAYER',
+      role: 'CREATOR',
     },
   });
 

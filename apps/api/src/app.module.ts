@@ -2,10 +2,19 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuthController } from './auth/auth.controller';
+import { AuthGuard } from './auth/auth.guard';
+import { AuthService } from './auth/auth.service';
+import { RolesGuard } from './auth/roles.guard';
+import { AdminController } from './admin/admin.controller';
+import { GamesController } from './games/games.controller';
+import { GamesService } from './games/games.service';
+import { UsersController } from './users/users.controller';
+import { UsersService } from './users/users.service';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController, AuthController, UsersController, GamesController, AdminController],
+  providers: [AppService, AuthService, AuthGuard, RolesGuard, UsersService, GamesService],
 })
 export class AppModule {}
