@@ -48,11 +48,23 @@ async function main() {
 
   const publishedVersion = await prisma.gameVersion.upsert({
     where: { gameId_versionNumber: { gameId: game.id, versionNumber: 1 } },
-    update: {},
+    update: {
+      engineKey: 'tic-tac-toe',
+      engineVersion: 1,
+      capabilities: {
+        bots: true,
+        midMatchJoin: false,
+        spectators: true,
+        passAndPlay: true,
+        offline: true,
+      },
+    },
     create: {
       gameId: game.id,
       versionNumber: 1,
       status: 'PUBLISHED',
+      engineKey: 'tic-tac-toe',
+      engineVersion: 1,
       manifest: {
         gameKey: 'tic-tac-toe',
         version: 1,
@@ -68,6 +80,13 @@ async function main() {
         },
         engine: { key: 'tictactoe', version: 1 },
         locales: ['en'],
+      },
+      capabilities: {
+        bots: true,
+        midMatchJoin: false,
+        spectators: true,
+        passAndPlay: true,
+        offline: true,
       },
       rulesArtifact: 'rules.tictactoe.json',
       uiArtifact: 'ui.tictactoe.json',

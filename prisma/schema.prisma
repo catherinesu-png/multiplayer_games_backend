@@ -108,7 +108,10 @@ model GameVersion {
   gameId          String
   versionNumber   Int
   status          GameStatus @default(DRAFT)
+  engineKey       String
+  engineVersion   Int
   manifest        Json
+  capabilities    Json
   rulesArtifact   String?
   uiArtifact      String?
   assetArtifact   String?

@@ -53,6 +53,10 @@ export class GameEngineRegistry {
     return this.engines.get(`${gameKey}:${version}`);
   }
 
+  has(gameKey: string, version: number): boolean {
+    return this.engines.has(`${gameKey}:${version}`);
+  }
+
   getLatest(gameKey: string): GameEngine<unknown, unknown, unknown> | undefined {
     let latest: GameEngine<unknown, unknown, unknown> | undefined;
     for (const [key, engine] of this.engines.entries()) {

@@ -6,10 +6,15 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "pretest": "pnpm --filter @game-platform/example-tictactoe build",
     "test": "vitest run --passWithNoTests",
     "lint": "tsc --noEmit"
   },
+  "dependencies": {
+    "@game-platform/game-engine": "workspace:*"
+  },
   "devDependencies": {
+    "@game-platform/example-tictactoe": "workspace:*",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"

@@ -7,6 +7,14 @@ import { CreateGameDto, UpdateGameDto } from './game.dto';
 export class GamesService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
+  list(currentUser: CurrentUser) {
+    return this.prisma.game.findMany({
+      where: currentUser.role === 'ADMIN' ? undefined : { creatorUserId: currentUser.id },
+      include: { versions: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   create(currentUser: CurrentUser, dto: CreateGameDto) {
     return this.prisma.game.create({
       data: {
@@ -20,7 +28,7 @@ export class GamesService {
   }
 
   async getById(id: string) {
-    const game = await this.prisma.game.findUnique({ where: { id } });
+    const game = await this.prisma.game.findUnique({ where: { id }, include: { versions: true } });
     if (!game) throw new NotFoundException('Game not found');
     return game;
   }

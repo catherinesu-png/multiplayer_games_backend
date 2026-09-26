@@ -199,7 +199,14 @@ importers:
         version: 3.2.7(@types/node@24.19.0)(@vitest/ui@3.2.7)(jiti@2.7.0)(tsx@4.23.15)
 
   packages/game-runtime:
+    dependencies:
+      '@game-platform/game-engine':
+        specifier: workspace:*
+        version: link:../game-engine
     devDependencies:
+      '@game-platform/example-tictactoe':
+        specifier: workspace:*
+        version: link:../example-engines/tictactoe
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.0
