@@ -4,6 +4,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { CurrentUser as CurrentUserType } from '../auth/auth.types';
 import { MatchesService } from './matches.service';
 import { CreateMatchDto } from './match.dto';
+import { SubmitMoveDto } from './move.dto';
 
 @Controller()
 @UseGuards(AuthGuard)
@@ -28,6 +29,15 @@ export class MatchesController {
   @Post('matches/:id/join')
   join(@Param('id') id: string, @CurrentUser() user: CurrentUserType) {
     return this.matchesService.join(id, user);
+  }
+
+  @Post('matches/:id/moves')
+  submitMove(
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserType,
+    @Body() dto: SubmitMoveDto,
+  ) {
+    return this.matchesService.submitMove(id, user, dto);
   }
 
   @Post('matches/:id/start')

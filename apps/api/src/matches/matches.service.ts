@@ -1,16 +1,18 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { GameEngineRegistry } from '@game-platform/game-engine';
-import { GameRuntime, RuntimeGameVersion } from '@game-platform/game-runtime';
+import { GameEngineError, GameEngineRegistry } from '@game-platform/game-engine';
+import { GameRuntime, GameRuntimeError, RuntimeGameVersion } from '@game-platform/game-runtime';
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser } from '../auth/auth.types';
 import { CreateMatchDto } from './match.dto';
+import { SubmitMoveDto } from './move.dto';
 import { GAME_ENGINE_REGISTRY } from './engine-registry.provider';
 
 @Injectable()
@@ -148,6 +150,142 @@ export class MatchesService {
         include: this.matchInclude(),
       });
     });
+  }
+
+  async submitMove(id: string, currentUser: CurrentUser, dto: SubmitMoveDto) {
+    return this.prisma.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT "id" FROM "Match" WHERE "id" = ${id} FOR UPDATE`;
+
+      const match = await transaction.match.findUnique({
+        where: { id },
+        include: this.matchInclude(),
+      });
+      if (!match) throw new NotFoundException('Match not found');
+
+      const existingMove = await transaction.move.findUnique({
+        where: { matchId_clientMoveId: { matchId: id, clientMoveId: dto.clientMoveId } },
+      });
+      if (existingMove) {
+        return this.moveResponse(match, existingMove.playerIndex, existingMove.versionAfter, currentUser, existingMove.accepted);
+      }
+
+      if (match.status !== 'ONGOING') throw new ConflictException('Match is not ongoing');
+      const player = match.players.find(
+        (candidate) => candidate.userId === currentUser.id && candidate.status === 'ACTIVE',
+      );
+      if (!player) throw new ForbiddenException('User is not an active match player');
+      if (match.turnPlayerIndex !== player.playerIndex) throw new ConflictException('It is not your turn');
+      if (match.version !== dto.expectedVersion) {
+        throw new ConflictException(`Expected match version ${dto.expectedVersion}, current version is ${match.version}`);
+      }
+
+      const runtimeVersion = this.toRuntimeVersion(match.gameVersion);
+      let transition;
+      try {
+        this.runtime.validateAction(runtimeVersion, match.state, dto.move, player.playerIndex);
+        transition = this.runtime.applyAction(runtimeVersion, match.state, dto.move, player.playerIndex);
+      } catch (error) {
+        if (error instanceof GameEngineError) {
+          throw new BadRequestException({ message: error.message, code: error.code });
+        }
+        if (error instanceof GameRuntimeError) {
+          throw new ConflictException(error.message);
+        }
+        throw error;
+      }
+
+      const nextVersion = match.version + 1;
+      const nextStatus = transition.isGameOver ? 'OVER' : 'ONGOING';
+      const nextTurn = transition.nextPlayerIndex;
+      const stateAfter = transition.state as Prisma.InputJsonValue;
+      const action = dto.move as Prisma.InputJsonValue;
+      const result = transition.result as Prisma.InputJsonValue;
+      const sequence = match.events.length + 1;
+
+      await transaction.move.create({
+        data: {
+          matchId: id,
+          sequence: nextVersion,
+          versionBefore: match.version,
+          versionAfter: nextVersion,
+          playerIndex: player.playerIndex,
+          userId: currentUser.id,
+          clientMoveId: dto.clientMoveId,
+          action,
+          stateAfter,
+          accepted: true,
+        },
+      });
+      await transaction.matchEvent.create({
+        data: {
+          matchId: id,
+          sequence,
+          type: 'MOVE_ACCEPTED',
+          actorUserId: currentUser.id,
+          playerIndex: player.playerIndex,
+          versionBefore: match.version,
+          versionAfter: nextVersion,
+          action,
+          payload: result,
+        },
+      });
+      await transaction.outboxEvent.create({
+        data: {
+          type: 'MATCH_MOVE_ACCEPTED',
+          aggregateType: 'MATCH',
+          aggregateId: id,
+          payload: {
+            matchId: id,
+            version: nextVersion,
+            playerIndex: player.playerIndex,
+            result,
+          },
+        },
+      });
+      const updatedMatch = await transaction.match.update({
+        where: { id },
+        data: {
+          state: stateAfter,
+          version: nextVersion,
+          turnPlayerIndex: nextTurn,
+          status: nextStatus,
+          endedAt: transition.isGameOver ? new Date() : null,
+        },
+        include: this.matchInclude(),
+      });
+
+      return {
+        accepted: true,
+        version: nextVersion,
+        state: transition.state,
+        playerView: this.runtime.getPlayerView(runtimeVersion, transition.state, player.playerIndex),
+        turn: nextTurn,
+        status: nextStatus,
+        result: transition.result,
+        match: updatedMatch,
+      };
+    });
+  }
+
+  private moveResponse(
+    match: any,
+    playerIndex: number,
+    version: number,
+    currentUser: CurrentUser,
+    accepted: boolean,
+  ) {
+    const runtimeVersion = this.toRuntimeVersion(match.gameVersion);
+    return {
+      accepted,
+      version,
+      state: match.state,
+      playerView: this.runtime.getPlayerView(runtimeVersion, match.state, playerIndex),
+      turn: match.turnPlayerIndex,
+      status: match.status,
+      result: this.runtime.getGameResult(runtimeVersion, match.state),
+      matchId: match.id,
+      userId: currentUser.id,
+    };
   }
 
   async leave(id: string, currentUser: CurrentUser) {
