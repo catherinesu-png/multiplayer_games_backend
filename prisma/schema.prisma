@@ -134,6 +134,7 @@ model Match {
   turnPlayerIndex Int?
   ownerUserId    String?
   joinPolicy     MatchJoinPolicy @default(OPEN)
+  hidden         Boolean         @default(false)
   createdAt      DateTime      @default(now())
   startedAt      DateTime?
   endedAt        DateTime?

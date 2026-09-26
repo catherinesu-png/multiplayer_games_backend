@@ -13,10 +13,13 @@ import { UsersController } from './users/users.controller';
 import { UsersService } from './users/users.service';
 import { GameVersionsController } from './games/game-versions.controller';
 import { VersionsService } from './games/versions.service';
+import { MatchesController } from './matches/matches.controller';
+import { MatchesService } from './matches/matches.service';
+import { gameEngineRegistryProvider } from './matches/engine-registry.provider';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [AppController, AuthController, UsersController, GamesController, GameVersionsController, AdminController],
-  providers: [AppService, AuthService, AuthGuard, RolesGuard, UsersService, GamesService, VersionsService],
+  controllers: [AppController, AuthController, UsersController, GamesController, GameVersionsController, MatchesController, AdminController],
+  providers: [AppService, AuthService, AuthGuard, RolesGuard, UsersService, GamesService, VersionsService, MatchesService, gameEngineRegistryProvider],
 })
 export class AppModule {}

@@ -16,6 +16,9 @@
   },
   "dependencies": {
     "@game-platform/contracts": "workspace:*",
+    "@game-platform/example-tictactoe": "workspace:*",
+    "@game-platform/game-engine": "workspace:*",
+    "@game-platform/game-runtime": "workspace:*",
     "@nestjs/common": "^11.1.11",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.1.11",
