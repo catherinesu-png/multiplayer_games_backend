@@ -1,0 +1,12 @@
+node_modules/
+.pnpm
+.next/
+.env
+.env.*
+coverage/
+*.log
+dist/
+*.tsbuildinfo
+prisma/generated
+apps/api/src/generated/
+.DS_Store

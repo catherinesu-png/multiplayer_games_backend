@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../apps/api/src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PLAYER
+  CREATOR
+  ADMIN
+}
+
+enum GameStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum MatchStatus {
+  LOBBY
+  ONGOING
+  OVER
+  CANCELLED
+}
+
+enum MatchMode {
+  PASS_AND_PLAY
+  VS_COMPUTER
+  PING_PONG
+  REAL_TIME
+}
+
+enum MatchJoinPolicy {
+  OPEN
+  INVITE_ONLY
+}
+
+enum MatchPlayerKind {
+  HUMAN
+  COMPUTER
+}
+
+enum MatchPlayerStatus {
+  INVITED
+  JOINED
+  ACTIVE
+  LEFT
+  DISCONNECTED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+model User {
+  id          String    @id @default(cuid())
+  displayName String
+  email       String    @unique
+  avatarUrl   String?
+  role        UserRole  @default(PLAYER)
+  status      String    @default("active")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  identities  Identity[]
+  games       Game[]
+  matches     Match[]
+  moveHistory Move[]
+}
+
+model Identity {
+  id         String   @id @default(cuid())
+  userId     String
+  provider   String
+  providerKey String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerKey])
+}
+
+model Game {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  name        String
+  description String?
+  creatorUserId String
+  status      String       @default("DRAFT")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  creator     User         @relation(fields: [creatorUserId], references: [id])
+  versions    GameVersion[]
+}
+
+model GameVersion {
+  id              String    @id @default(cuid())
+  gameId          String
+  versionNumber   Int
+  status          GameStatus @default(DRAFT)
+  manifest        Json
+  rulesArtifact   String?
+  uiArtifact      String?
+  assetArtifact   String?
+  createdAt       DateTime  @default(now())
+  publishedAt     DateTime?
+  game            Game      @relation(fields: [gameId], references: [id])
+  matches         Match[]
+
+  @@unique([gameId, versionNumber])
+}
+
+model Match {
+  id             String        @id @default(cuid())
+  gameVersionId  String
+  status         MatchStatus   @default(LOBBY)
+  mode           MatchMode
+  version        Int           @default(0)
+  state          Json
+  initialState   Json
+  turnPlayerIndex Int?
+  ownerUserId    String?
+  joinPolicy     MatchJoinPolicy @default(OPEN)
+  createdAt      DateTime      @default(now())
+  startedAt      DateTime?
+  endedAt        DateTime?
+  updatedAt      DateTime      @updatedAt
+  gameVersion    GameVersion   @relation(fields: [gameVersionId], references: [id])
+  players        MatchPlayer[]
+  moves          Move[]
+  events         MatchEvent[]
+  notifications  Notification[]
+  owner          User?         @relation(fields: [ownerUserId], references: [id])
+}
+
+model MatchPlayer {
+  id        String             @id @default(cuid())
+  matchId   String
+  playerIndex Int
+  userId    String?
+  kind      MatchPlayerKind
+  status    MatchPlayerStatus @default(INVITED)
+  joinedAt  DateTime?
+  leftAt    DateTime?
+  match     Match              @relation(fields: [matchId], references: [id])
+
+  @@unique([matchId, playerIndex])
+}
+
+model Move {
+  id              String   @id @default(cuid())
+  matchId         String
+  sequence        Int
+  versionBefore   Int
+  versionAfter    Int
+  playerIndex     Int
+  userId          String?
+  clientMoveId    String
+  action          Json
+  stateAfter      Json
+  accepted        Boolean  @default(false)
+  rejectionReason String?
+  createdAt       DateTime @default(now())
+  match           Match    @relation(fields: [matchId], references: [id])
+  user            User?    @relation(fields: [userId], references: [id])
+
+  @@unique([matchId, clientMoveId])
+  @@index([matchId, sequence])
+}
+
+model MatchEvent {
+  id             String   @id @default(cuid())
+  matchId        String
+  sequence       Int
+  type           String
+  actorUserId    String?
+  playerIndex    Int?
+  versionBefore  Int?
+  versionAfter   Int?
+  action         Json?
+  payload        Json?
+  createdAt      DateTime @default(now())
+  match          Match    @relation(fields: [matchId], references: [id])
+
+  @@index([matchId, sequence])
+}
+
+model Notification {
+  id        String            @id @default(cuid())
+  userId    String
+  type      String
+  matchId   String?
+  payload   Json
+  status    NotificationStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  sentAt    DateTime?
+  match     Match?            @relation(fields: [matchId], references: [id])
+}
+
+model OutboxEvent {
+  id           String       @id @default(cuid())
+  type         String
+  aggregateType String
+  aggregateId  String
+  payload      Json
+  status       OutboxStatus @default(PENDING)
+  createdAt    DateTime     @default(now())
+  processedAt  DateTime?
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String
+  metadata    Json
+  createdAt   DateTime @default(now())
+}

@@ -1,0 +1,30 @@
+{
+  "name": "game-platform",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "pnpm@9.15.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "packages/example-engines/*",
+    "scripts/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter api dev\" \"pnpm --filter backoffice dev\"",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r exec tsc --noEmit",
+    "test": "pnpm -r test",
+    "dependencies:audit": "pnpm outdated -r && pnpm why eslint --recursive && pnpm why next --recursive && pnpm why cron-parser --recursive && pnpm why glob --recursive",
+    "db:migrate": "pnpm --filter api prisma:migrate",
+    "db:generate": "pnpm --filter api prisma:generate",
+    "db:seed": "pnpm --filter api prisma:seed",
+    "docker:up": "docker compose -f infra/docker-compose.yml up -d",
+    "docker:down": "docker compose -f infra/docker-compose.yml down -v"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.6.0",
+    "concurrently": "^9.1.2",
+    "prisma": "^6.6.0"
+  }
+}

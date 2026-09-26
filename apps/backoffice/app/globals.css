@@ -1,0 +1,11 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #111827;
+  color: #f3f4f6;
+  font-family: Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+a { color: inherit; text-decoration: none; }
